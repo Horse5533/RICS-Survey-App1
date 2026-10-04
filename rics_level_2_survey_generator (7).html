@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RICS Level 2 Survey Generator</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: 'var(--brand-50, #f0f3f9)',
+              100: 'var(--brand-100, #d9e2ec)',
+              500: 'var(--brand-500, #1e3a8a)',
+              600: 'var(--brand-600, #1e3a8a)',
+              700: 'var(--brand-700, #172554)',
+              800: 'var(--brand-800, #0f172a)'
+            },
+            cr1: '#16a34a', // Condition Rating 1 Green
+            cr2: '#d97706', // Condition Rating 2 Amber
+            cr3: '#dc2626', // Condition Rating 3 Red
+            crni: '#6b7280' // Not Inspected
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --brand-primary: #1e3a8a;
+      --brand-secondary: #0f172a;
+      --brand-accent: #2563eb;
+    }
+
+    .bg-brand-primary { background-color: var(--brand-primary); }
+    .text-brand-primary { color: var(--brand-primary); }
+    .border-brand-primary { border-color: var(--brand-primary); }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* Print Styles */
+    @media print {
+      body { background-color: #ffffff !important; color: #000000 !important; font-size: 11pt; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .page-break { page-break-before: always; }
+      .avoid-break { page-break-inside: avoid; }
+      .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: none !important; }
+      .border { border-color: #cbd5e1 !important; }
+      .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      
+      /* Standardized Print Header / Footer */
+      @page {
+        size: A4;
+        margin: 15mm 15mm 15mm 15mm;
+      }
+    }
+
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-800 bg-slate-100 flex flex-col antialiased">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="no-print bg-slate-900 text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Active Project Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-700 flex items-center justify-center font-bold text-xl text-white shadow-inner">
+            <i class="fa-solid fa-house-chimney-crack"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold tracking-tight text-white text-lg">RICS L2 Survey Pro</span>
+              <span class="bg-blue-600/40 text-blue-300 text-xs px-2 py-0.5 rounded-full font-mono border border-blue-500/30">v2.5</span>
+            </div>
+            <p id="nav-active-address" class="text-xs text-slate-400 truncate max-w-xs sm:max-w-md">124 High Street, London, SW1A 1AA</p>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <button onclick="toggleProjectsDrawer(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 border border-slate-700">
+            <i class="fa-solid fa-folder-open text-amber-400"></i>
+            <span class="hidden sm:inline">Projects</span>
+          </button>
+
+          <button onclick="openBrandingModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 border border-slate-700">
+            <i class="fa-solid fa-paint-roller text-indigo-400"></i>
+            <span class="hidden sm:inline">Branding</span>
+          </button>
+
+          <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-blue-500/20 transition flex items-center space-x-2">
+            <i class="fa-solid fa-print"></i>
+            <span>Export PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <div class="flex-1 flex overflow-hidden max-w-7xl w-full mx-auto px-0 sm:px-4 py-0 sm:py-6 gap-6">
+
+    <!-- DESKTOP SECTION SIDEBAR -->
+    <aside class="no-print hidden lg:block w-64 bg-white rounded-xl shadow-sm border border-slate-200 overflow-y-auto flex-shrink-0 p-4 sticky top-22 h-[calc(100vh-7rem)]">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-2">Survey Sections</h3>
+      <nav id="section-nav" class="space-y-1 text-sm font-medium text-slate-600">
+        <a href="#section-cover" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition active-nav">
+          <span>Cover Page</span>
+          <i class="fa-solid fa-book-open text-xs text-slate-400"></i>
+        </a>
+        <a href="#section-a" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec A: About Inspection</span>
+        </a>
+        <a href="#section-b" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec B: Overall Opinion</span>
+        </a>
+        <a href="#section-ratings" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Condition Ratings</span>
+        </a>
+        <a href="#section-c" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec C: Property Details</span>
+        </a>
+        <a href="#section-d" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec D: Location & Grounds</span>
+        </a>
+        <a href="#section-e" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec E: Limitations</span>
+        </a>
+        <a href="#section-f" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec F: Outside</span>
+        </a>
+        <a href="#section-g" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec G: Inside</span>
+        </a>
+        <a href="#section-h" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec H: Services</span>
+        </a>
+        <a href="#section-i" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec I: Grounds</span>
+        </a>
+        <a href="#section-j" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec J: Legal Issues</span>
+        </a>
+        <a href="#section-k" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec K: Risks</span>
+        </a>
+        <a href="#section-l" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition">
+          <span>Sec L: Declaration</span>
+        </a>
+        <a href="#appendix-a" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition text-indigo-600 font-semibold">
+          <span>App A: House Diagram</span>
+          <i class="fa-solid fa-diagram-project text-xs"></i>
+        </a>
+        <a href="#appendix-b" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition text-indigo-600 font-semibold">
+          <span>App B: Glossary</span>
+          <i class="fa-solid fa-book-bookmark text-xs"></i>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN FORM & REPORT DOCUMENT CONTAINER -->
+    <main class="flex-1 overflow-y-auto bg-white sm:rounded-xl shadow-md border border-slate-200 p-4 sm:p-8 space-y-12">
+
+      <!-- ========================================== -->
+      <!-- COVER PAGE SECTION                         -->
+      <!-- ========================================== -->
+      <section id="section-cover" class="space-y-6 pb-8 border-b border-slate-200">
+        <!-- Header Branding Banner -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 bg-slate-900 rounded-2xl text-white shadow-md border-l-8 border-blue-600">
+          <div>
+            <div id="company-name-display" class="text-2xl font-black uppercase tracking-wider">Acme Surveyors Ltd</div>
+            <div id="company-reg-display" class="text-xs text-slate-400 mt-1">Regulated by RICS | Reg: 87654321</div>
+          </div>
+          <div id="company-logo-container" class="w-32 h-16 bg-white/10 rounded-lg flex items-center justify-center p-2 border border-white/20">
+            <span class="text-xs text-slate-300 font-semibold">COMPANY LOGO</span>
+          </div>
+        </div>
+
+        <div class="text-center sm:text-left py-4">
+          <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold tracking-wide uppercase mb-2">RICS Home Survey Level 2</span>
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Homebuyer Inspection Report</h1>
+          <p class="text-slate-500 mt-1">In accordance with RICS Professional Standards & Guidance</p>
+        </div>
+
+        <!-- Property Front Photo Container -->
+        <div class="space-y-3">
+          <label class="block text-sm font-bold text-slate-700">Property Elevation / Front Photo</label>
+          <div class="relative group rounded-2xl border-2 border-dashed border-slate-300 p-2 bg-slate-50 hover:border-blue-500 transition text-center overflow-hidden min-h-[220px] flex items-center justify-center">
+            <img id="cover-photo-preview" class="max-h-80 w-full object-cover rounded-xl hidden" src="" alt="Property Front Photo">
+            <div id="cover-photo-placeholder" class="py-8">
+              <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-400 mb-2"></i>
+              <p class="text-sm font-semibold text-slate-700">Click to upload cover photo</p>
+              <p class="text-xs text-slate-400">JPEG, PNG or WEBP up to 10MB</p>
+            </div>
+            <input type="file" id="cover-photo-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleCoverPhotoUpload(this)">
+          </div>
+        </div>
+
+        <!-- Key Details Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Property Address</label>
+            <input type="text" id="prop-address" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" value="124 High Street, London, SW1A 1AA" oninput="updateActiveAddress(this.value)">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Client Name</label>
+            <input type="text" id="client-name" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" value="John & Sarah Doe">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date of Inspection</label>
+            <input type="date" id="inspection-date" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Assigned Surveyor</label>
+            <input type="text" id="surveyor-name-display" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900 bg-slate-100" value="Alex Morgan MRICS" readonly>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- SECTION A: ABOUT THE INSPECTION            -->
+      <!-- ========================================== -->
+      <section id="section-a" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section A: About the Inspection & Report</h2>
+          <p class="text-xs text-slate-500">Scope of inspection, limitations and standard service terms</p>
+        </div>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2 leading-relaxed">
+          <p>This report has been prepared by a qualified Chartered Surveyor in accordance with the RICS Home Survey Standard (1st edition) requirements for a Level 2 report. The service aims to give the client professional advice to assist in deciding whether to proceed with the purchase, assess whether the price is reasonable, and identify urgent repairs/defects before exchange of contracts.</p>
+          <textarea id="section-a-notes" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="3" placeholder="Enter custom inspection scope details or special instructions..."></textarea>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION B: OVERALL OPINION                 -->
+      <!-- ========================================== -->
+      <section id="section-b" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section B: Overall Opinion of Property</h2>
+          <p class="text-xs text-slate-500">Executive summary statement and high-level evaluation</p>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">Executive Summary / General Impression</label>
+          <textarea id="section-b-summary" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="5" placeholder="Summarise overall structural condition, age-appropriate wear and tear, key risks, and urgent defects requiring attention prior to exchange..."></textarea>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- CONDITION RATINGS DEFINITIONS              -->
+      <!-- ========================================== -->
+      <section id="section-ratings" class="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+        <h3 class="text-base font-bold text-slate-900 uppercase tracking-wide border-b border-slate-300 pb-2">RICS Condition Rating Definitions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-white p-4 rounded-xl border-t-4 border-green-600 shadow-sm">
+            <div class="flex items-center space-x-2 font-bold text-green-700 mb-1">
+              <span class="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-xs">1</span>
+              <span>Condition Rating 1</span>
+            </div>
+            <p class="text-slate-600">No repair is currently needed. The property must be maintained in the normal way.</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border-t-4 border-amber-500 shadow-sm">
+            <div class="flex items-center space-x-2 font-bold text-amber-700 mb-1">
+              <span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs">2</span>
+              <span>Condition Rating 2</span>
+            </div>
+            <p class="text-slate-600">Defects that need repairing or replacing but are not considered to be serious or urgent. The property must be maintained in the normal way.</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border-t-4 border-red-600 shadow-sm">
+            <div class="flex items-center space-x-2 font-bold text-red-700 mb-1">
+              <span class="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs">3</span>
+              <span>Condition Rating 3</span>
+            </div>
+            <p class="text-slate-600">Defects that are serious and/or need to be repaired, replaced or investigated urgently.</p>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- SECTION C: ABOUT THE PROPERTY              -->
+      <!-- ========================================== -->
+      <section id="section-c" class="space-y-6">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section C: About the Property</h2>
+          <p class="text-xs text-slate-500">Property details, age, accommodation schedule & energy rating</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Property Type</label>
+            <select id="prop-type" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500">
+              <option>Detached House</option>
+              <option>Semi-Detached House</option>
+              <option>Terraced House</option>
+              <option>End-Terraced House</option>
+              <option>Purpose Built Flat</option>
+              <option>Maisonette</option>
+              <option>Bunglow</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Approx. Year Built</label>
+            <input type="text" id="prop-built" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" value="c. 1935">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">EPC Energy Rating</label>
+            <select id="prop-epc" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-bold text-amber-600">
+              <option value="A">Band A</option>
+              <option value="B">Band B</option>
+              <option value="C" selected>Band C</option>
+              <option value="D">Band D</option>
+              <option value="E">Band E</option>
+              <option value="F">Band F</option>
+              <option value="G">Band G</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Mains Services Summary Toggles -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-3">Mains Services Connected</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="svc-elec" checked class="w-4 h-4 text-blue-600 rounded">
+              <span>Electricity</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="svc-gas" checked class="w-4 h-4 text-blue-600 rounded">
+              <span>Mains Gas</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="svc-water" checked class="w-4 h-4 text-blue-600 rounded">
+              <span>Mains Water</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="svc-drain" checked class="w-4 h-4 text-blue-600 rounded">
+              <span>Mains Drainage</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Accommodation Schedule Table -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-600">Accommodation Schedule</label>
+            <button onclick="addAccommodationRow()" class="text-xs text-blue-600 font-bold hover:underline flex items-center space-x-1">
+              <i class="fa-solid fa-plus"></i><span>Add Floor/Room</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table id="accommodation-table" class="w-full text-sm text-left">
+              <thead class="bg-slate-100 text-slate-700 text-xs uppercase font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-3">Floor Level</th>
+                  <th class="p-3">Living / Reception</th>
+                  <th class="p-3">Bedrooms</th>
+                  <th class="p-3">Bath / En-suite</th>
+                  <th class="p-3">Other / Utility</th>
+                  <th class="p-3 text-right no-print">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 text-xs">
+                <tr>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="Ground Floor"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="2 (Lounge, Dining)"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="0"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="1 (WC)"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="Kitchen, Utility"></td>
+                  <td class="p-2 text-right no-print"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+                <tr>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="First Floor"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="0"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="3 Bed"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="1 Bathroom"></td>
+                  <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="Landing"></td>
+                  <td class="p-2 text-right no-print"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION D & E: LOCATION & LIMITATIONS     -->
+      <!-- ========================================== -->
+      <section id="section-d" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section D: Location, Grounds & Environment</h2>
+        </div>
+        <textarea id="section-d-notes" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Describe locality, transport links, local topography, flood risk zone status, or nearby rivers/coasts..."></textarea>
+      </section>
+
+      <section id="section-e" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section E: Limitations on the Inspection</h2>
+          <p class="text-xs text-slate-500">Quick-toggle common inspection limitations</p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs no-print mb-2">
+          <button onclick="toggleLimitationChip(this, 'Fitted carpets restricted view of floorboards throughout.')" class="px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-200 transition">+ Fitted Carpets</button>
+          <button onclick="toggleLimitationChip(this, 'Roof void inspection restricted due to thick insulation quilt.')" class="px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-200 transition">+ Restricted Roof Void</button>
+          <button onclick="toggleLimitationChip(this, 'High level roof slopes viewed from ground level using binoculars.')" class="px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-200 transition">+ High Roof Slopes</button>
+          <button onclick="toggleLimitationChip(this, 'Subfloor void not accessible due to sealed hatches.')" class="px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-200 transition">+ Subfloor Access</button>
+        </div>
+        <textarea id="section-e-notes" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Detail any specific areas where inspection was restricted..."></textarea>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- DYNAMIC ELEMENT SECTIONS (F, G, H, I)      -->
+      <!-- ========================================== -->
+      
+      <!-- SECTION F: OUTSIDE -->
+      <section id="section-f" class="space-y-6">
+        <div class="bg-blue-900 text-white p-4 rounded-xl flex justify-between items-center shadow-sm">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wider">Section F: Outside the Property</h2>
+            <p class="text-xs text-blue-200">Chimneys, Roofs, Walls, Windows, External Joinery</p>
+          </div>
+          <span class="text-2xl font-black opacity-30">SEC F</span>
+        </div>
+
+        <div id="container-section-f" class="space-y-6 divide-y divide-slate-200">
+          <!-- Elements dynamically initialized or updated -->
+        </div>
+      </section>
+
+      <!-- SECTION G: INSIDE -->
+      <section id="section-g" class="space-y-6">
+        <div class="bg-blue-900 text-white p-4 rounded-xl flex justify-between items-center shadow-sm">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wider">Section G: Inside the Property</h2>
+            <p class="text-xs text-blue-200">Ceilings, Walls, Floors, Woodwork, Bathroom</p>
+          </div>
+          <span class="text-2xl font-black opacity-30">SEC G</span>
+        </div>
+
+        <div id="container-section-g" class="space-y-6 divide-y divide-slate-200">
+          <!-- Elements dynamically initialized or updated -->
+        </div>
+      </section>
+
+      <!-- SECTION H: SERVICES -->
+      <section id="section-h" class="space-y-6">
+        <div class="bg-blue-900 text-white p-4 rounded-xl flex justify-between items-center shadow-sm">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wider">Section H: Services</h2>
+            <p class="text-xs text-blue-200">Electricity, Gas, Water, Heating, Drainage</p>
+          </div>
+          <span class="text-2xl font-black opacity-30">SEC H</span>
+        </div>
+
+        <div id="container-section-h" class="space-y-6 divide-y divide-slate-200">
+          <!-- Elements dynamically initialized or updated -->
+        </div>
+      </section>
+
+      <!-- SECTION I: GROUNDS -->
+      <section id="section-i" class="space-y-6">
+        <div class="bg-blue-900 text-white p-4 rounded-xl flex justify-between items-center shadow-sm">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wider">Section I: Outside Grounds & Outbuildings</h2>
+            <p class="text-xs text-blue-200">Garages, Outbuildings, Boundaries, Gardens</p>
+          </div>
+          <span class="text-2xl font-black opacity-30">SEC I</span>
+        </div>
+
+        <div id="container-section-i" class="space-y-6 divide-y divide-slate-200">
+          <!-- Elements dynamically initialized or updated -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION J, K, L: LEGAL, RISKS & DECLARATION-->
+      <!-- ========================================== -->
+      <section id="section-j" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section J: Issues for Legal Advisors</h2>
+          <p class="text-xs text-slate-500">Planning permissions, building regulations, guarantees & tenure</p>
+        </div>
+        <textarea id="section-j-notes" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Detail any missing building regulations sign-offs, rights of way, shared boundaries, or guarantees requiring legal verification..."></textarea>
+      </section>
+
+      <section id="section-k" class="space-y-4">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section K: Risks</h2>
+          <p class="text-xs text-slate-500">Risks to building, grounds, or occupants (e.g., asbestos, damp, safety)</p>
+        </div>
+        <textarea id="section-k-notes" class="w-full p-3 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Detail health & safety risks, lack of safety glass, high damp readings, or structural movement risks..."></textarea>
+      </section>
+
+      <section id="section-l" class="space-y-6 border-t border-slate-200 pt-6">
+        <div class="border-l-4 border-blue-800 pl-4 py-1">
+          <h2 class="text-xl font-bold text-slate-900">Section L: Surveyor's Declaration</h2>
+        </div>
+        
+        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+          <p class="text-xs text-slate-600 leading-relaxed">
+            I confirm that I have inspected the property described in this report and have produced this document in accordance with the professional standards specified by RICS.
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Surveyor Signature</label>
+              <div id="declaration-sig-box" class="h-24 bg-white border border-slate-300 rounded-lg flex items-center justify-center p-2">
+                <span class="text-xs text-slate-400 font-mono">[ Digital Signature Loaded ]</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Date of Report</label>
+              <input type="date" id="declaration-date" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- APPENDIX A: TYPICAL HOUSE DIAGRAM          -->
+      <!-- ========================================== -->
+      <section id="appendix-a" class="space-y-6 pt-8 border-t-4 border-slate-900 page-break">
+        <div class="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
+          <div>
+            <span class="text-xs text-amber-400 font-bold uppercase tracking-wider">Appendix A</span>
+            <h2 class="text-2xl font-black">Typical House Diagram</h2>
+          </div>
+          <i class="fa-solid fa-house-chimney text-3xl text-slate-700"></i>
+        </div>
+
+        <p class="text-xs text-slate-600 leading-relaxed">
+          This diagram illustrates the main structural elements and architectural terminology used within this RICS Level 2 Survey Report. Refer to the labels below to identify building components.
+        </p>
+
+        <!-- House SVG Graphic with Hotspots -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
+          <svg viewBox="0 0 800 500" class="w-full max-w-2xl h-auto" xmlns="http://www.w3.org/2000/svg">
+            <!-- Sky / Background -->
+            <rect width="800" height="500" fill="#f8fafc" />
+            <!-- Ground -->
+            <rect y="420" width="800" height="80" fill="#e2e8f0" />
+            
+            <!-- Main Roof Outline -->
+            <polygon points="200,200 400,80 600,200" fill="#94a3b8" stroke="#334155" stroke-width="4" />
+            <!-- Main House Body -->
+            <rect x="230" y="200" width="340" height="220" fill="#f1f5f9" stroke="#334155" stroke-width="4" />
+            
+            <!-- Chimney -->
+            <rect x="270" y="110" width="40" height="70" fill="#cbd5e1" stroke="#334155" stroke-width="3" />
+            <polygon points="260,110 320,110 320,100 260,100" fill="#64748b" />
+
+            <!-- Windows -->
+            <rect x="270" y="230" width="70" height="60" fill="#bae6fd" stroke="#0284c7" stroke-width="3" />
+            <rect x="460" y="230" width="70" height="60" fill="#bae6fd" stroke="#0284c7" stroke-width="3" />
+            <rect x="460" y="320" width="70" height="60" fill="#bae6fd" stroke="#0284c7" stroke-width="3" />
+            
+            <!-- Door -->
+            <rect x="280" y="320" width="55" height="100" fill="#475569" stroke="#1e293b" stroke-width="3" />
+
+            <!-- Gutters -->
+            <line x1="190" y1="205" x2="610" y2="205" stroke="#0f172a" stroke-width="6" stroke-linecap="round" />
+            <!-- Downpipe -->
+            <line x1="595" y1="205" x2="595" y2="420" stroke="#0f172a" stroke-width="5" />
+
+            <!-- Diagram Hotspot Callouts -->
+            <circle cx="290" cy="90" r="10" fill="#dc2626" class="animate-pulse" />
+            <text x="290" y="94" text-anchor="middle" fill="white" font-size="10" font-weight="bold">1</text>
+
+            <circle cx="400" cy="80" r="10" fill="#dc2626" />
+            <text x="400" y="84" text-anchor="middle" fill="white" font-size="10" font-weight="bold">2</text>
+
+            <circle cx="200" cy="200" r="10" fill="#dc2626" />
+            <text x="200" y="204" text-anchor="middle" fill="white" font-size="10" font-weight="bold">3</text>
+
+            <circle cx="595" cy="300" r="10" fill="#dc2626" />
+            <text x="595" y="304" text-anchor="middle" fill="white" font-size="10" font-weight="bold">4</text>
+            
+            <circle cx="380" cy="350" r="10" fill="#dc2626" />
+            <text x="380" y="354" text-anchor="middle" fill="white" font-size="10" font-weight="bold">5</text>
+          </svg>
+        </div>
+
+        <!-- Component List Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs font-mono bg-slate-100 p-4 rounded-xl border border-slate-200">
+          <div class="p-1.5 bg-white rounded border">1. Chimney Pot & Flaunching</div>
+          <div class="p-1.5 bg-white rounded border">2. Ridge Tile</div>
+          <div class="p-1.5 bg-white rounded border">3. Verge / Barge Board</div>
+          <div class="p-1.5 bg-white rounded border">4. Rainwater Downpipe</div>
+          <div class="p-1.5 bg-white rounded border">5. Cavity Main Wall</div>
+          <div class="p-1.5 bg-white rounded border">6. Airbrick</div>
+          <div class="p-1.5 bg-white rounded border">7. Damp Proof Course (DPC)</div>
+          <div class="p-1.5 bg-white rounded border">8. Gulley & Drain</div>
+          <div class="p-1.5 bg-white rounded border">9. Soffit & Fascia</div>
+          <div class="p-1.5 bg-white rounded border">10. Roof Valley</div>
+          <div class="p-1.5 bg-white rounded border">11. Flashings</div>
+          <div class="p-1.5 bg-white rounded border">12. Floor Joists</div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- APPENDIX B: GLOSSARY OF TECHNICAL TERMS   -->
+      <!-- ========================================== -->
+      <section id="appendix-b" class="space-y-6 pt-8 border-t-4 border-slate-900 page-break">
+        <div class="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
+          <div>
+            <span class="text-xs text-amber-400 font-bold uppercase tracking-wider">Appendix B</span>
+            <h2 class="text-2xl font-black">Glossary of Technical Terms</h2>
+          </div>
+          <i class="fa-solid fa-book-bookmark text-3xl text-slate-700"></i>
+        </div>
+
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Standardized definitions of architectural and construction terms used throughout this survey report.
+        </p>
+
+        <!-- Terms A-Z Grid -->
+        <div id="glossary-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <!-- Dynamically filled with standardized terms -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- PROJECTS MANAGEMENT DRAWER (MODAL)         -->
+  <!-- ========================================== -->
+  <div id="projects-drawer" class="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity">
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl p-6 overflow-y-auto flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+          <h3 class="text-lg font-bold text-slate-900">Survey Projects Drawer</h3>
+          <button onclick="toggleProjectsDrawer(false)" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+
+        <button onclick="createNewSurveyProject()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-md mb-6 flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-plus"></i>
+          <span>Create New Survey Report</span>
+        </button>
+
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Saved Reports</h4>
+        <div id="projects-list" class="space-y-3">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 pt-4 mt-6 space-y-2">
+        <button onclick="exportProjectJSON()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-download"></i><span>Export Backup (JSON)</span>
+        </button>
+        <label class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer">
+          <i class="fa-solid fa-upload"></i><span>Import Backup (JSON)</span>
+          <input type="file" accept=".json" class="hidden" onchange="importProjectJSON(event)">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BRANDING & SURVEYOR MODAL                  -->
+  <!-- ========================================== -->
+  <div id="branding-modal" class="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+        <h3 class="text-lg font-bold text-slate-900">Company Branding & Surveyor Profile</h3>
+        <button onclick="closeBrandingModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Company Name</label>
+          <input type="text" id="modal-company-name" class="w-full px-3 py-2 border rounded-lg" value="Acme Surveyors Ltd">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">RICS Reg / Accreditation</label>
+          <input type="text" id="modal-company-reg" class="w-full px-3 py-2 border rounded-lg" value="Regulated by RICS | Reg: 87654321">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Surveyor Name & Post-nominals</label>
+          <input type="text" id="modal-surveyor-name" class="w-full px-3 py-2 border rounded-lg" value="Alex Morgan MRICS">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Color Palette Preset</label>
+          <select id="modal-theme-select" onchange="applyThemePreset(this.value)" class="w-full px-3 py-2 border rounded-lg">
+            <option value="navy">Classic Navy</option>
+            <option value="slate">Modern Slate</option>
+            <option value="green">Eco Green</option>
+            <option value="corporate">Corporate Blue</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Digital Signature Pad</label>
+          <div class="border rounded-lg p-2 bg-slate-50">
+            <canvas id="sig-canvas" width="350" height="100" class="w-full bg-white border border-slate-300 rounded cursor-crosshair"></canvas>
+            <div class="flex justify-between items-center mt-2">
+              <button onclick="clearSignatureCanvas()" class="text-xs text-red-500 font-semibold">Clear Canvas</button>
+              <span class="text-xs text-slate-400">Draw signature with mouse or touch</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3 border-t border-slate-200 pt-4">
+        <button onclick="closeBrandingModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold">Cancel</button>
+        <button onclick="saveBrandingSettings()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT LOGIC CORE                     -->
+  <!-- ========================================== -->
+  <script>
+    // STANDARD INSPECTION STRUCTURE CONFIGURATION
+    const ELEMENT_CONFIG = {
+      f: [
+        { id: 'f1', name: 'F1 Chimney Stacks', phrases: ['Masonry repointing needed', 'Defective flashings', 'Pots unsealed'] },
+        { id: 'f2', name: 'F2 Roof Coverings', phrases: ['Slipped tiles observed', 'Moss buildup present', 'Flat roof aging'] },
+        { id: 'f3', name: 'F3 Rainwater Goods', phrases: ['Gutters leaking at joints', 'Vegetation blockage', 'Downpipe disconnected'] },
+        { id: 'f4', name: 'F4 Main Walls', phrases: ['Cracking to rendering', 'Spalling brickwork', 'DPC bypassed'] },
+        { id: 'f5', name: 'F5 Windows', phrases: ['Failed double glazed units', 'Timber rot to sills', 'Draft seals worn'] },
+        { id: 'f6', name: 'F6 External Doors', phrases: ['Locks require upgrade', 'Door binding on frame', 'Weather seal missing'] },
+        { id: 'f7', name: 'F7 Conservatory / Porch', phrases: ['Polycarbonate roof leaks', 'Single glazing condensation'] },
+        { id: 'f8', name: 'F8 Other External Features', phrases: ['High level timber rot', 'Parapet wall damp'] }
+      ],
+      g: [
+        { id: 'g1', name: 'G1 Ceilings', phrases: ['Plaster hairline cracks', 'Water staining noted', 'Artex ceiling present'] },
+        { id: 'g2', name: 'G2 Walls & Partitions', phrases: ['Damp readings elevated', 'Plaster hollow in areas'] },
+        { id: 'g3', name: 'G3 Floors', phrases: ['Floorboards springy', 'Uneven floor pitch', 'Laminate flooring good'] },
+        { id: 'g4', name: 'G4 Fireplaces & Flues', phrases: ['Flue unvented', 'Open hearth sealed', 'Log burner installed'] },
+        { id: 'g5', name: 'G5 Built-in Woodwork', phrases: ['Stair balustrade gap loose', 'Kitchen units functional'] },
+        { id: 'g6', name: 'G6 Bathroom Fittings', phrases: ['Sanitaryware sealant worn', 'Shower leak risk', 'Extractor fan operational'] },
+        { id: 'g7', name: 'G7 Other Internal Features', phrases: ['Loft hatch uninsulated', 'Loft ladder secure'] }
+      ],
+      h: [
+        { id: 'h1', name: 'H1 Electricity', phrases: ['Consumer unit modern dual RCD', 'Older fuse box present', 'Periodic testing recommended'] },
+        { id: 'h2', name: 'H2 Gas', phrases: ['Gas meter operational', 'Safety inspection certificate required'] },
+        { id: 'h3', name: 'H3 Water', phrases: ['Internal stopcock located', 'Lead pipework absent'] },
+        { id: 'h4', name: 'H4 Heating', phrases: ['Combi boiler installed', 'Radiators equipped with TRVs', 'Boiler service record missing'] },
+        { id: 'h5', name: 'H5 Hot Water', phrases: ['Unvented cylinder noted', 'Instantaneous hot water'] },
+        { id: 'h6', name: 'H6 Drainage', phrases: ['Inspection chamber clear', 'Plastic foul pipework'] },
+        { id: 'h7', name: 'H7 Other Services', phrases: ['Solar PV array installed', 'EV charger present'] }
+      ],
+      i: [
+        { id: 'i1', name: 'I1 Garages', phrases: ['Timber rot to garage door frame', 'Roof felt deteriorating'] },
+        { id: 'i2', name: 'I2 Permanent Outbuildings', phrases: ['Garden shed timber decay', 'Outbuilding power supply'] },
+        { id: 'i3', name: 'I3 Grounds & Gardens', phrases: ['Retaining wall tilting', 'Japanese Knotweed absent', 'Paved patio level'] },
+        { id: 'i4', name: 'I4 Other External Grounds', phrases: ['Boundary fence timber rot', 'Shared access path'] }
+      ]
+    };
+
+    const GLOSSARY_TERMS = [
+      { term: 'Airbrick', def: 'A perforated brick built into a wall to provide ventilation to subfloor voids or rooms.' },
+      { term: 'Barge Board', def: 'A timber or UPVC board fixed to the gable end of a roof covering rafter ends.' },
+      { term: 'Cavity Wall', def: 'A wall built of two parallel masonry leaves separated by a continuous air space or insulation layer.' },
+      { term: 'Ceiling Joist', def: 'A horizontal timber member spanning a room supporting the ceiling finish.' },
+      { term: 'Damp Proof Course (DPC)', def: 'A horizontal layer of impervious material built into a wall to prevent rising damp.' },
+      { term: 'Damp Proof Membrane (DPM)', def: 'A sheet membrane installed in concrete ground floors to prevent moisture ingress.' },
+      { term: 'Downpipe', def: 'A vertical pipe that conveys rainwater from roof gutters to drainage gulleys.' },
+      { term: 'Eaves', def: 'The lower overhanging edge of a roof slope projecting past the wall face.' },
+      { term: 'Fascia Board', def: 'A horizontal board mounted where the roof meets outer walls, supporting rainwater gutters.' },
+      { term: 'Flashing', def: 'A strip of lead, zinc or metal shaped to cover roof junctions and prevent water ingress.' },
+      { term: 'Flat Roof', def: 'A roof having a pitch of less than 10 degrees, typically lined with felt, rubber or GRP.' },
+      { term: 'Flaunching', def: 'A contoured cement mortar bed at the top of a chimney stack holding pots in place.' },
+      { term: 'Floor Joists', def: 'Parallel horizontal structural timbers supporting floor boards or decking.' },
+      { term: 'Foul Drain', def: 'An underground pipe carrying wastewater from toilets, sinks and baths to main sewers.' },
+      { term: 'Foundation', def: 'The concrete substructure designed to distribute building loads safely into underlying ground.' },
+      { term: 'Gable End Wall', def: 'The triangular upper part of a wall at the end of a ridged roof.' },
+      { term: 'Gulley', def: 'An open drainage fitting receiving rainwater or wastewater discharges above ground.' },
+      { term: 'Gutter', def: 'A shallow channel fixed along roof eaves to collect and convey rainwater runoff.' },
+      { term: 'Hip Tile', def: 'A specially shaped angular tile used to cover the external junction of two sloped roofs.' },
+      { term: 'Inspection Chamber', def: 'An underground access chamber providing access for drain clearance and inspection.' },
+      { term: 'Parapet', def: 'A low wall perimeter projecting above a roof line or balcony edge.' },
+      { term: 'Purlin', def: 'A horizontal structural roof timber supporting intermediate rafters.' },
+      { term: 'Rafter', def: 'Sloping timber rafters extending from the eaves to the ridge supporting roof tiles or slates.' },
+      { term: 'Ridge Tile', def: 'An inverted V-shaped tile fitted along the top apex line of a pitched roof.' },
+      { term: 'Roof Truss', def: 'A prefabricated structural timber frame engineered to span roof walls.' },
+      { term: 'Roofing Felt', def: 'A waterproof underlay lining fitted beneath slates or tiles.' },
+      { term: 'Soakaway', def: 'A subterranean aggregate-filled pit designed to dissipate rainwater into surrounding soil.' },
+      { term: 'Soffit', def: 'The horizontal underside lining board fitted between the fascia and the outer house wall.' },
+      { term: 'Soil-and-vent Pipe', def: 'A vertical drain vent pipe discharging above roof level to release sewer gases.' },
+      { term: 'Solid Wall', def: 'A wall constructed without a continuous cavity space, common in pre-1920 properties.' },
+      { term: 'Valley', def: 'The internal angle formed by the intersection of two sloping roof planes.' },
+      { term: 'Verge', def: 'The outer exposed edge of a pitched roof over a gable wall.' }
+    ];
+
+    // GLOBAL APPLICATION STATE
+    let currentProject = {
+      id: 'proj_default',
+      address: '124 High Street, London, SW1A 1AA',
+      client: 'John & Sarah Doe',
+      date: new Date().toISOString().split('T')[0],
+      elementsData: {}
+    };
+
+    let allProjects = [];
+    let canvas, ctx, isDrawing = false;
+
+
+    // INITIALIZATION ON LOAD
+    window.onload = function() {
+      initApp();
+      setupSignaturePad();
+    };
+
+    function initApp() {
+      // 1. Render Dynamic Inspection Sections
+      renderSectionElements('f', ELEMENT_CONFIG.f, 'container-section-f');
+      renderSectionElements('g', ELEMENT_CONFIG.g, 'container-section-g');
+      renderSectionElements('h', ELEMENT_CONFIG.h, 'container-section-h');
+      renderSectionElements('i', ELEMENT_CONFIG.i, 'container-section-i');
+
+      // 2. Render Glossary
+      renderGlossary();
+
+      // 3. Load Saved Projects
+      loadProjectsFromStorage();
+
+      // 4. Set Default Dates
+      document.getElementById('inspection-date').value = currentProject.date;
+      document.getElementById('declaration-date').value = currentProject.date;
+    }
+
+    // RENDER INSPECTION ELEMENTS WITH DEDICATED PHOTO MANAGERS
+    function renderSectionElements(sectionPrefix, items, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      items.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'pt-4 space-y-3';
+        itemEl.id = `item-wrapper-${item.id}`;
+
+        itemEl.innerHTML = `
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <h3 class="text-base font-bold text-slate-800">${item.name}</h3>
+            <!-- Rating Buttons -->
+            <div class="flex space-x-1" id="ratings-${item.id}">
+              <button onclick="setConditionRating('${item.id}', 'CR1')" class="cr-btn px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 hover:bg-green-100 transition" data-cr="CR1">1</button>
+              <button onclick="setConditionRating('${item.id}', 'CR2')" class="cr-btn px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-100 transition" data-cr="CR2">2</button>
+              <button onclick="setConditionRating('${item.id}', 'CR3')" class="cr-btn px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 hover:bg-red-100 transition" data-cr="CR3">3</button>
+              <button onclick="setConditionRating('${item.id}', 'NI')" class="cr-btn px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-cr="NI">N/I</button>
+            </div>
+          </div>
+
+          <!-- Quick Phrase Chips -->
+          <div class="flex flex-wrap gap-1.5 no-print">
+            ${item.phrases.map(p => `
+              <button onclick="appendPhrase('${item.id}', '${p}')" class="text-[11px] bg-slate-100 hover:bg-blue-50 text-slate-600 border border-slate-200 rounded-full px-2.5 py-0.5 transition">+ ${p}</button>
+            `).join('')}
+          </div>
+
+          <!-- Text Commentary -->
+          <textarea id="text-${item.id}" oninput="autoSaveElementText('${item.id}')" class="w-full p-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="2" placeholder="Enter findings, defect descriptions, and repair recommendations for ${item.name}..."></textarea>
+
+          <!-- DEDICATED ELEMENT PHOTO MANAGER -->
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <i class="fa-solid fa-camera text-blue-600 mr-1"></i>Photos for ${item.name}
+              </span>
+              <label class="no-print bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1 rounded cursor-pointer font-bold transition flex items-center space-x-1">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+                <span>Add Photos</span>
+                <input type="file" accept="image/*" multiple class="hidden" onchange="handleElementPhotoUpload('${item.id}', this)">
+              </label>
+            </div>
+
+            <!-- Thumbnail & Caption Gallery Container -->
+            <div id="gallery-${item.id}" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+              <span class="text-xs text-slate-400 italic col-span-full no-photos-label">No photos attached to ${item.name}.</span>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(itemEl);
+      });
+    }
+
+    // PER-ELEMENT PHOTO UPLOADER LOGIC
+    function handleElementPhotoUpload(elementId, input) {
+      const files = Array.from(input.files);
+      if (!files.length) return;
+
+      if (!currentProject.elementsData[elementId]) {
+        currentProject.elementsData[elementId] = { rating: 'CR1', text: '', photos: [] };
+      }
+      if (!currentProject.elementsData[elementId].photos) {
+        currentProject.elementsData[elementId].photos = [];
+      }
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const photoObj = {
+            id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            src: e.target.result,
+            caption: ''
+          };
+          currentProject.elementsData[elementId].photos.push(photoObj);
+          renderElementGallery(elementId);
+          saveProjectsToStorage();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderElementGallery(elementId) {
+      const galleryContainer = document.getElementById(`gallery-${elementId}`);
+      const photos = currentProject.elementsData[elementId]?.photos || [];
+
+      if (photos.length === 0) {
+        galleryContainer.innerHTML = `<span class="text-xs text-slate-400 italic col-span-full no-photos-label">No photos attached to this element.</span>`;
+        return;
+      }
+
+      galleryContainer.innerHTML = '';
+      photos.forEach((photo, idx) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'relative group bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm space-y-1';
+        itemDiv.innerHTML = `
+          <div class="relative h-24 overflow-hidden rounded">
+            <img src="${photo.src}" class="w-full h-full object-cover">
+            <button onclick="removeElementPhoto('${elementId}', '${photo.id}')" class="no-print absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-80 hover:opacity-100">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <input type="text" value="${photo.caption}" oninput="updatePhotoCaption('${elementId}', '${photo.id}', this.value)" placeholder="Add photo caption..." class="w-full p-1 text-[11px] border border-slate-200 rounded focus:ring-1 focus:ring-blue-500">
+        `;
+        galleryContainer.appendChild(itemDiv);
+      });
+    }
+
+    function updatePhotoCaption(elementId, photoId, captionText) {
+      const photos = currentProject.elementsData[elementId]?.photos || [];
+      const target = photos.find(p => p.id === photoId);
+      if (target) {
+        target.caption = captionText;
+        saveProjectsToStorage();
+      }
+    }
+
+    function removeElementPhoto(elementId, photoId) {
+      if (!currentProject.elementsData[elementId]) return;
+      currentProject.elementsData[elementId].photos = currentProject.elementsData[elementId].photos.filter(p => p.id !== photoId);
+      renderElementGallery(elementId);
+      saveProjectsToStorage();
+    }
+
+
+    // RATING & TEXT HELPERS
+    function setConditionRating(elementId, rating) {
+      if (!currentProject.elementsData[elementId]) {
+        currentProject.elementsData[elementId] = { rating: rating, text: '', photos: [] };
+      } else {
+        currentProject.elementsData[elementId].rating = rating;
+      }
+
+      // Update UI button highlights
+      const parent = document.getElementById(`ratings-${elementId}`);
+      if (parent) {
+        const btns = parent.querySelectorAll('.cr-btn');
+        btns.forEach(btn => {
+          btn.classList.remove('bg-green-600', 'bg-amber-500', 'bg-red-600', 'bg-slate-600', 'text-white');
+          btn.classList.add('bg-slate-100', 'text-slate-600');
+
+          if (btn.dataset.cr === rating) {
+            btn.classList.remove('bg-slate-100', 'text-slate-600');
+            if (rating === 'CR1') btn.classList.add('bg-green-600', 'text-white');
+            if (rating === 'CR2') btn.classList.add('bg-amber-500', 'text-white');
+            if (rating === 'CR3') btn.classList.add('bg-red-600', 'text-white');
+            if (rating === 'NI') btn.classList.add('bg-slate-600', 'text-white');
+          }
+        });
+      }
+      saveProjectsToStorage();
+    }
+
+    function appendPhrase(elementId, phrase) {
+      const textarea = document.getElementById(`text-${elementId}`);
+      if (textarea) {
+        textarea.value = textarea.value ? `${textarea.value}. ${phrase}` : phrase;
+        autoSaveElementText(elementId);
+      }
+    }
+
+    function autoSaveElementText(elementId) {
+      const text = document.getElementById(`text-${elementId}`).value;
+      if (!currentProject.elementsData[elementId]) {
+        currentProject.elementsData[elementId] = { rating: 'CR1', text: text, photos: [] };
+      } else {
+        currentProject.elementsData[elementId].text = text;
+      }
+      saveProjectsToStorage();
+    }
+
+    function toggleLimitationChip(btn, text) {
+      const notesArea = document.getElementById('section-e-notes');
+      notesArea.value = notesArea.value ? `${notesArea.value}\n• ${text}` : `• ${text}`;
+    }
+
+    function addAccommodationRow() {
+      const tbody = document.querySelector('#accommodation-table tbody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2"><input type="text" class="w-full p-1 border rounded" placeholder="Level"></td>
+        <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="0"></td>
+        <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="0"></td>
+        <td class="p-2"><input type="text" class="w-full p-1 border rounded" value="0"></td>
+        <td class="p-2"><input type="text" class="w-full p-1 border rounded" placeholder="Room details"></td>
+        <td class="p-2 text-right no-print"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function renderGlossary() {
+      const grid = document.getElementById('glossary-grid');
+      grid.innerHTML = GLOSSARY_TERMS.map(item => `
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+          <span class="font-bold text-slate-900 block mb-0.5">${item.term}</span>
+          <span class="text-slate-600 leading-tight block">${item.def}</span>
+        </div>
+      `).join('');
+    }
+
+
+    // COVER PHOTO UPLOADER
+    function handleCoverPhotoUpload(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.getElementById('cover-photo-preview');
+          const placeholder = document.getElementById('cover-photo-placeholder');
+          img.src = e.target.result;
+          img.classList.remove('hidden');
+          placeholder.classList.add('hidden');
+          currentProject.coverPhoto = e.target.result;
+          saveProjectsToStorage();
+        }
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function updateActiveAddress(val) {
+      currentProject.address = val;
+      document.getElementById('nav-active-address').innerText = val || 'Untitled Survey Project';
+      saveProjectsToStorage();
+    }
+
+    // PROJECT DRAWER CONTROLS
+    function toggleProjectsDrawer(show) {
+      const drawer = document.getElementById('projects-drawer');
+      if (show) {
+        drawer.classList.remove('hidden');
+        renderProjectsList();
+      } else {
+        drawer.classList.add('hidden');
+      }
+    }
+
+    function createNewSurveyProject() {
+      const newProj = {
+        id: 'proj_' + Date.now(),
+        address: 'New Survey Property Address',
+        client: 'Client Name',
+        date: new Date().toISOString().split('T')[0],
+        elementsData: {}
+      };
+      allProjects.push(newProj);
+      currentProject = newProj;
+      saveProjectsToStorage();
+      loadProjectIntoForm(currentProject);
+      toggleProjectsDrawer(false);
+    }
+
+    function renderProjectsList() {
+      const list = document.getElementById('projects-list');
+      list.innerHTML = allProjects.map(p => `
+        <div class="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 flex justify-between items-center transition ${p.id === currentProject.id ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/50' : ''}">
+          <div onclick="switchActiveProject('${p.id}')" class="cursor-pointer flex-1 mr-2">
+            <p class="text-sm font-bold text-slate-900 truncate">${p.address}</p>
+            <p class="text-xs text-slate-400">${p.client || 'Client'} • ${p.date}</p>
+          </div>
+          <button onclick="deleteProject('${p.id}')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>
+      `).join('');
+    }
+
+    function switchActiveProject(id) {
+      const target = allProjects.find(p => p.id === id);
+      if (target) {
+        currentProject = target;
+        loadProjectIntoForm(currentProject);
+        toggleProjectsDrawer(false);
+      }
+    }
+
+    function deleteProject(id) {
+      if (allProjects.length <= 1) {
+        alert("At least one project must remain in storage.");
+        return;
+      }
+      allProjects = allProjects.filter(p => p.id !== id);
+      if (currentProject.id === id) {
+        currentProject = allProjects[0];
+        loadProjectIntoForm(currentProject);
+      }
+      saveProjectsToStorage();
+      renderProjectsList();
+    }
+
+    function saveProjectsToStorage() {
+      localStorage.setItem('rics_survey_projects', JSON.stringify(allProjects));
+      localStorage.setItem('rics_active_id', currentProject.id);
+    }
+
+    function loadProjectsFromStorage() {
+      const saved = localStorage.getItem('rics_survey_projects');
+      const activeId = localStorage.getItem('rics_active_id');
+
+      if (saved) {
+        allProjects = JSON.parse(saved);
+        if (activeId) {
+          currentProject = allProjects.find(p => p.id === activeId) || allProjects[0];
+        } else {
+          currentProject = allProjects[0];
+        }
+      } else {
+        allProjects = [currentProject];
+      }
+      loadProjectIntoForm(currentProject);
+    }
+
+    function loadProjectIntoForm(proj) {
+      document.getElementById('prop-address').value = proj.address || '';
+      document.getElementById('client-name').value = proj.client || '';
+      document.getElementById('nav-active-address').innerText = proj.address || 'Untitled Project';
+
+      if (proj.coverPhoto) {
+        document.getElementById('cover-photo-preview').src = proj.coverPhoto;
+        document.getElementById('cover-photo-preview').classList.remove('hidden');
+        document.getElementById('cover-photo-placeholder').classList.add('hidden');
+      } else {
+        document.getElementById('cover-photo-preview').classList.add('hidden');
+        document.getElementById('cover-photo-placeholder').classList.remove('hidden');
+      }
+
+      // Reload rating and text values for elements
+      const elements = [...ELEMENT_CONFIG.f, ...ELEMENT_CONFIG.g, ...ELEMENT_CONFIG.h, ...ELEMENT_CONFIG.i];
+      elements.forEach(item => {
+        const data = proj.elementsData?.[item.id] || { rating: 'CR1', text: '', photos: [] };
+        setConditionRating(item.id, data.rating || 'CR1');
+        const textEl = document.getElementById(`text-${item.id}`);
+        if (textEl) textEl.value = data.text || '';
+        renderElementGallery(item.id);
+      });
+    }
+
+
+    // SIGNATURE CANVAS LOGIC
+    function setupSignaturePad() {
+      canvas = document.getElementById('sig-canvas');
+      ctx = canvas.getContext('2d');
+
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseleave', stopDrawing);
+
+      // Touch controls for iPad/Mobile
+      canvas.addEventListener('touchstart', (e) => { startDrawing(e.touches[0]); e.preventDefault(); });
+      canvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+      canvas.addEventListener('touchend', stopDrawing);
+    }
+
+    function startDrawing(e) {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      ctx.beginPath();
+      ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+      ctx.stroke();
+    }
+
+    function stopDrawing() { isDrawing = false; }
+
+    function clearSignatureCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // BRANDING MODAL CONTROLS
+    function openBrandingModal() {
+      document.getElementById('branding-modal').classList.remove('hidden');
+    }
+
+    function closeBrandingModal() {
+      document.getElementById('branding-modal').classList.add('hidden');
+    }
+
+    function saveBrandingSettings() {
+      const name = document.getElementById('modal-company-name').value;
+      const reg = document.getElementById('modal-company-reg').value;
+      const surveyor = document.getElementById('modal-surveyor-name').value;
+
+      document.getElementById('company-name-display').innerText = name;
+      document.getElementById('company-reg-display').innerText = reg;
+      document.getElementById('surveyor-name-display').value = surveyor;
+
+      closeBrandingModal();
+    }
+
+    function applyThemePreset(theme) {
+      const root = document.documentElement;
+      if (theme === 'navy') {
+        root.style.setProperty('--brand-primary', '#1e3a8a');
+      } else if (theme === 'slate') {
+        root.style.setProperty('--brand-primary', '#334155');
+      } else if (theme === 'green') {
+        root.style.setProperty('--brand-primary', '#14532d');
+      } else if (theme === 'corporate') {
+        root.style.setProperty('--brand-primary', '#0284c7');
+      }
+    }
+
+    function exportProjectJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allProjects));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "RICS_Survey_Backup.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importProjectJSON(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          allProjects = JSON.parse(e.target.result);
+          currentProject = allProjects[0];
+          saveProjectsToStorage();
+          loadProjectIntoForm(currentProject);
+          alert("Survey data imported successfully!");
+        } catch (err) {
+          alert("Invalid JSON file format.");
+        }
+      };
+      fileReader.readAsText(event.target.files[0]);
+    }
+  </script>
+</body>
+</html>
